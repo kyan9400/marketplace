@@ -1,26 +1,32 @@
-import { prisma } from "@/lib/db";
 import Link from "next/link";
+import { prisma } from "@/lib/db";
 
 export default async function ProductsPage() {
   const products = await prisma.product.findMany({
     orderBy: { createdAt: "desc" },
-    include: { shop: true }});
+    include: { shop: true },
+  });
 
   return (
-    <div className="mx-auto max-w-6xl p-4">
-      <h1 className="text-2xl font-bold mb-6">Products</h1>
-      <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div>
+      <h1 className="text-3xl font-bold tracking-tight">Products</h1>
+      <ul className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {products.map((p) => (
-          <li key={p.id} className="rounded-xl border bg-white p-4 shadow-sm">
-            <Link href={`/products/${p.slug}`} className="font-medium hover:underline">
-              {p.title}
+          <li
+            key={p.id}
+            className="group rounded-2xl border bg-white shadow-sm transition-shadow hover:shadow-md"
+          >
+            <Link href={`/products/${p.slug}`} className="block p-5">
+              <div className="flex items-start justify-between gap-4">
+                <h2 className="font-medium text-slate-900 transition-colors group-hover:text-indigo-600">
+                  {p.title}
+                </h2>
+                <span className="rounded-full border bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700">
+                  {(p.priceCents / 100).toFixed(2)} {p.currency}
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-slate-500">by {p.shop?.name ?? "Unknown"}</p>
             </Link>
-            <div className="mt-1 text-sm text-gray-600">
-              {(p.priceCents / 100).toFixed(2)} {p.currency}
-            </div>
-            {p.shop && (
-              <div className="mt-1 text-xs text-gray-500">by {p.shop.name}</div>
-            )}
           </li>
         ))}
       </ul>
