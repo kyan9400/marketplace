@@ -1,53 +1,62 @@
-import { prisma } from "@/lib/db";
-import { addToCart } from "@/lib/cart";
 import Link from "next/link";
+import { notFound } from "next/navigation";
+import { prisma } from "@/lib/db";
 
-type Props = { params: { slug: string } };
+type PageProps = {
+  params: Promise<{ slug: string }>;
+};
 
-export default async function ProductDetail({ params }: Props) {
+export default async function Page({ params }: PageProps) {
+  const { slug } = await params;
+
   const product = await prisma.product.findUnique({
-    where: { slug: params.slug },
-    include: { shop: true, variants: true },
+    where: { slug },
+    include: { shop: true },
   });
 
-  if (!product) {
-    return (
-      <div className="p-8">
-        <p className="mb-4">Product not found.</p>
-        <Link href="/products" className="underline">Back to products</Link>
-      </div>
-    );
-  }
+  if (!product) notFound();
 
-  const images = product.imagesJson ? (JSON.parse(product.imagesJson) as string[]) : [];
+  const images: string[] = (() => {
+    try { return JSON.parse(product.imagesJson ?? "[]") ?? []; }
+    catch { return []; }
+  })();
 
   return (
-    <div className="grid gap-8 md:grid-cols-2">
-      <div className="space-y-4">
-        {images.length > 0 ? (
-          <img src={images[0]} alt={product.title} className="w-full rounded border object-cover" />
-        ) : (
-          <div className="aspect-square w-full rounded border grid place-items-center text-sm text-gray-500">No image</div>
-        )}
-      </div>
+    <div className="mx-auto max-w-4xl p-4">
+      <Link href="/products" className="text-sm text-blue-600 hover:underline">
+        &larr; Back to products
+      </Link>
 
-      <div>
-        <h1 className="text-2xl font-bold">{product.title}</h1>
-        <p className="text-gray-600 mt-2">{product.description}</p>
-        <p className="text-2xl font-semibold mt-4">
-          ${(product.priceCents / 100).toFixed(2)} {product.currency}
-        </p>
-        <p className="text-sm text-gray-500 mt-1">Sold by {product.shop.name}</p>
+      <h1 className="mt-2 text-2xl font-bold">{product.title}</h1>
+      <p className="mt-1 text-gray-600">
+        {(product.priceCents / 100).toFixed(2)} {product.currency}
+      </p>
+      {product.shop && (
+        <p className="text-sm text-gray-500">by {product.shop.name}</p>
+      )}
 
-        <div className="mt-8 flex gap-3 items-center">
-          <form action={addToCart} className="flex items-center gap-2">
-            <input type="hidden" name="productId" value={product.id} />
-            <input type="number" name="qty" min={1} defaultValue={1} className="w-20 border rounded px-2 py-1" />
-            <button className="rounded bg-black px-4 py-2 text-white">Add to cart</button>
-          </form>
-          <Link href="/cart" className="rounded border px-4 py-2">View cart</Link>
-        </div>
-      </div>
+      <div className="prose mt-4 whitespace-pre-wrap">{product.description}</div>
+
+      {images.length > 0 && (
+        <ul className="mt-4 grid grid-cols-2 gap-2">
+          {images.map((src, i) => (
+            <li key={i} className="aspect-square overflow-hidden rounded-lg border">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={src} alt="" className="h-full w-full object-cover" />
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <form action="/cart" method="POST" className="mt-6">
+        <input type="hidden" name="productId" value={product.id} />
+        <button
+          type="submit"
+          className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+        >
+          Add to cart
+        </button>
+      </form>
     </div>
   );
 }

@@ -1,3 +1,77 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Design tokens */
+:root{
+  --bg: 248 248 250;        /* gray-50-ish */
+  --surface: 255 255 255;   /* white */
+  --text: 17 24 39;         /* gray-900 */
+  --muted: 75 85 99;        /* gray-600 */
+  --primary: 59 130 246;    /* blue-500/600 */
+  --ring: 147 197 253;      /* blue-300 */
+}
+html,body{
+  height:100%;
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgba(99,102,241,0.12), transparent 40%),
+    radial-gradient(800px 500px at 90% 10%, rgba(59,130,246,0.10), transparent 40%),
+    rgb(var(--bg));
+  color: rgb(var(--text));
+}
+
+/* Typography rhythm */
+@layer base{
+  h1{@apply text-3xl md:text-4xl font-semibold tracking-tight;}
+  h2{@apply text-2xl md:text-3xl font-semibold;}
+  h3{@apply text-xl md:text-2xl font-semibold;}
+  p {@apply leading-relaxed text-gray-700;}
+  a {@apply text-blue-600 hover:text-blue-700;}
+}
+
+/* Reusable UI primitives */
+@layer components{
+  .container-page{@apply mx-auto max-w-6xl px-4;}
+  .card{
+    @apply rounded-2xl border border-gray-200 bg-white/80 backdrop-blur shadow-sm;
+  }
+  .btn{
+    @apply inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-medium transition
+           focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300;
+  }
+  .btn-primary{
+    @apply btn bg-blue-600 text-white hover:bg-blue-700 active:scale-[.98];
+  }
+  .btn-secondary{
+    @apply btn bg-white border border-gray-200 hover:bg-gray-50;
+  }
+  .btn-ghost{
+    @apply btn hover:bg-gray-100/60;
+  }
+  .input{
+    @apply w-full rounded-xl border border-gray-200 bg-white/90 px-3 py-2 text-sm
+           focus:outline-none focus:ring-2 focus:ring-blue-300;
+  }
+  .badge{
+    @apply inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium;
+  }
+  .badge-muted{@apply badge border-gray-200 text-gray-600 bg-white;}
+  .badge-success{@apply badge border-green-200 text-green-700 bg-green-50;}
+  .badge-warn{@apply badge border-amber-200 text-amber-700 bg-amber-50;}
+}
+
+/* Nice image treatment + subtle hover */
+.product-img{
+  @apply aspect-[4/3] w-full rounded-xl object-cover bg-gray-100;
+  transition: transform .4s ease, box-shadow .4s ease;
+}
+.card-hover{
+  transition: transform .25s ease, box-shadow .25s ease, background .3s;
+}
+.card-hover:hover{
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,.06);
+}
+
+/* Section spacing */
+.section{@apply container-page my-10 md:my-14;}

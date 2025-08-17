@@ -1,4 +1,4 @@
-import { PrismaClient } from "../generated/prisma";
+﻿import { PrismaClient } from "../generated/prisma";
 
 declare global {
   // Avoid re-instantiating Prisma in dev (hot reloads)
@@ -15,3 +15,4 @@ export const prisma =
 if (process.env.NODE_ENV !== "production") {
   global.prisma = prisma;
 }
+

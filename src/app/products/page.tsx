@@ -2,37 +2,28 @@ import { prisma } from "@/lib/db";
 import Link from "next/link";
 
 export default async function ProductsPage() {
-  const products = await prisma.product.findMany({ include: { shop: true } });
+  const products = await prisma.product.findMany({
+    orderBy: { createdAt: "desc" },
+    include: { shop: true }});
 
   return (
-    <div>
+    <div className="mx-auto max-w-6xl p-4">
       <h1 className="text-2xl font-bold mb-6">Products</h1>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {products.map((p) => {
-          const images = p.imagesJson ? (JSON.parse(p.imagesJson) as string[]) : [];
-          return (
-            <Link
-              key={p.id}
-              href={`/products/${p.slug}`}
-              className="block border rounded-lg shadow p-4 bg-white hover:shadow-md transition"
-            >
-              {images.length > 0 && (
-                <img
-                  src={images[0]}
-                  alt={p.title}
-                  className="w-full h-48 object-cover rounded"
-                />
-              )}
-              <h2 className="text-lg font-semibold mt-2">{p.title}</h2>
-              <p className="text-sm text-gray-600">{p.description}</p>
-              <p className="text-blue-600 font-bold mt-2">
-                ${(p.priceCents / 100).toFixed(2)} {p.currency}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">Sold by {p.shop.name}</p>
+      <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {products.map((p) => (
+          <li key={p.id} className="rounded-xl border bg-white p-4 shadow-sm">
+            <Link href={`/products/${p.slug}`} className="font-medium hover:underline">
+              {p.title}
             </Link>
-          );
-        })}
-      </div>
+            <div className="mt-1 text-sm text-gray-600">
+              {(p.priceCents / 100).toFixed(2)} {p.currency}
+            </div>
+            {p.shop && (
+              <div className="mt-1 text-xs text-gray-500">by {p.shop.name}</div>
+            )}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
