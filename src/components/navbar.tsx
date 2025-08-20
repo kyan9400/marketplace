@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import Image from "next/image";
@@ -12,7 +12,15 @@ const links = [
   { href: "/account", label: "Account" },
 ];
 
-function NavLink({ href, label, onClick }: { href: string; label: string; onClick?: () => void }) {
+function NavLink({
+  href,
+  label,
+  onClick,
+}: {
+  href: string;
+  label: string;
+  onClick?: () => void;
+}) {
   const pathname = usePathname();
   const active = pathname === href || (href !== "/" && pathname?.startsWith(href));
   return (
@@ -35,7 +43,9 @@ export default function Navbar() {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    const onResize = () => { if (window.innerWidth >= 768) setOpen(false); };
+    const onResize = () => {
+      if (window.innerWidth >= 768) setOpen(false);
+    };
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
@@ -49,7 +59,9 @@ export default function Navbar() {
         </Link>
 
         <nav className="ml-auto hidden md:flex items-center gap-1">
-          {links.map((l) => <NavLink key={l.href} href={l.href} label={l.label} />)}
+          {links.map((l) => (
+            <NavLink key={l.href} href={l.href} label={l.label} />
+          ))}
           <Link
             href="/signin"
             className="ml-2 inline-flex items-center rounded-xl border border-gray-200 px-3 py-2 text-sm font-medium hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
