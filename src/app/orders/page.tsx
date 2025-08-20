@@ -7,7 +7,8 @@ import { StatusBadge, PaymentBadge } from "@/components/badges";
 export default async function OrdersPage() {
   // make dynamic for Next 15
   const _jar = await cookies();
-  const userId = await getUserIdFromCookie();
+  const userId = await getUserIdFromCookie(_jar);
+  
 
   if (!userId) {
     return (

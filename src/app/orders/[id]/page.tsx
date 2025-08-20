@@ -9,7 +9,8 @@ type Props = { params: Promise<{ id: string }> };
 
 export default async function Page({ params }: Props) {
   const _jar = await cookies();
-  const userId = await getUserIdFromCookie();
+  const userId = await getUserIdFromCookie(_jar);
+  
   const { id } = await params;
 
   if (!userId) notFound();
