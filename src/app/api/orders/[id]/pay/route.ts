@@ -1,4 +1,4 @@
-// src/app/api/orders/[id]/pay/route.ts
+﻿// src/app/api/orders/[id]/pay/route.ts
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
@@ -13,7 +13,7 @@ export async function POST(req: Request, context: any) {
 
   // In Next 15, cookies() is async
   const jar = await cookies();
-  const uid = await ensureUserId(jar);
+  const uid = await ensureUserId();
 
   // Make sure the order belongs to the current user
   const order = await prisma.order.findFirst({
@@ -42,3 +42,4 @@ export async function POST(req: Request, context: any) {
 
   return NextResponse.redirect(new URL(`/orders/${id}`, req.url), 303);
 }
+
