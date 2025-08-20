@@ -1,66 +1,97 @@
 import Link from "next/link";
-import { getCart } from "@/lib/cart";
-import { placeOrder } from "@/lib/orders";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
+import { prisma } from "@/lib/db";
+import { ensureUserId } from "@/lib/user";
+
+// Parse our cart cookie (supports legacy array of ids or [{id,qty}])
+function parseCookie(raw?: string): { id: string; qty: number }[] {
+  try {
+    const data = JSON.parse(raw ?? "[]");
+    if (Array.isArray(data)) {
+      if (data.length && typeof data[0] === "object" && (data[0] as any)?.id) {
+        return data.map((x: any) => ({ id: String(x.id), qty: Math.max(1, Number(x.qty ?? 1)) }));
+      }
+      if (data.length && typeof data[0] === "string") {
+        return Array.from(new Set(data as string[])).map((id) => ({ id: String(id), qty: 1 }));
+      }
+    }
+  } catch {}
+  return [];
+}
 
 export default async function CheckoutPage() {
-  const session = await getServerSession(authOptions);
-  const cart = await getCart();
+  async function action(formData: FormData) {
+    "use server";
+    const jar = await cookies();
+    const items = parseCookie(jar.get("cart")?.value);
+    if (!items.length) redirect("/cart");
 
-  if (!session?.user) {
-    return (
-      <div>
-        <h1 className="text-2xl font-bold mb-4">Checkout</h1>
-        <p className="mb-3">You need to sign in to place your order.</p>
-        <Link href="/signin" className="underline">Go to sign in</Link>
-      </div>
-    );
+    // Make sure we have a user id + row in DB
+    const userId = await ensureUserId();
+
+    // Load products and build rows
+    const ids = items.map(i => i.id);
+    const products = await prisma.product.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, title: true, priceCents: true, currency: true },
+    });
+    const byId = new Map(products.map(p => [p.id, p]));
+    const rows = items
+      .map(i => ({ item: i, product: byId.get(i.id) }))
+      .filter(r => !!r.product) as { item: {id:string; qty:number}, product: {id:string; title:string; priceCents:number; currency:string} }[];
+
+    if (!rows.length) redirect("/cart");
+
+    const subtotalCents = rows.reduce((sum, r) => sum + r.product.priceCents * r.item.qty, 0);
+    const currency = rows[0]!.product.currency;
+
+    // Create order + items in a transaction
+    const order = await prisma.$transaction(async (tx) => {
+      const o = await tx.order.create({
+        data: {
+          userId,
+          status: "PENDING",
+          paymentStatus: "UNPAID",
+          currency,
+          subtotalCents,
+          discountCents: 0,
+          shippingCents: 0,
+          taxCents: 0,
+          totalCents: subtotalCents,
+        },
+        select: { id: true },
+      });
+
+      await tx.orderItem.createMany({
+        data: rows.map(({ item, product }) => ({
+          orderId: o.id,
+          productId: product.id,
+          titleSnapshot: product.title,
+          unitPriceCents: product.priceCents,
+          qty: item.qty,
+          totalCents: product.priceCents * item.qty,
+        })),
+      });
+
+      return o;
+    });
+
+    // Clear cart cookie, then go to order detail
+    jar.set("cart", "[]", { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
+    redirect(`/orders/${order.id}`);
   }
-
-  if (!cart || cart.items.length === 0) {
-    return (
-      <div>
-        <h1 className="text-2xl font-bold mb-4">Checkout</h1>
-        <p>Your cart is empty.</p>
-        <Link href="/products" className="underline mt-2 inline-block">Browse products</Link>
-      </div>
-    );
-  }
-
-  const currency = (cart.items[0] as any)?.product?.currency ?? "USD";
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-6">Order summary</h1>
-
-      <ul className="space-y-3 mb-6">
-        {cart.items.map((it: any) => (
-          <li key={`${it.productId}-${it.variantId ?? "none"}`} className="flex items-start justify-between">
-            <div>
-              <div className="font-medium">{it.product?.title ?? "Item"}</div>
-              {it.variantLabel && <div className="text-xs text-gray-600">Variant: {it.variantLabel}</div>}
-              <div className="text-sm text-gray-600">Qty: {it.qty}</div>
-            </div>
-            <div className="font-semibold">
-              ${(it.totalCents / 100).toFixed(2)} {currency}
-            </div>
-          </li>
-        ))}
-      </ul>
-
-      <div className="flex items-center justify-between border-t pt-4">
-        <div className="text-xl font-semibold">
-          Total: ${(cart.subtotalCents / 100).toFixed(2)} {currency}
-        </div>
-        <form action={async () => { "use server"; await placeOrder(); }}>
-          <button className="rounded bg-black px-5 py-2 text-white">Place order</button>
-        </form>
-      </div>
-
-      <div className="mt-4">
-        <Link href="/cart" className="underline">Back to cart</Link>
-      </div>
+    <div className="mx-auto max-w-3xl p-6">
+      <h1 className="text-2xl font-bold">Checkout</h1>
+      <p className="mt-3 text-gray-600">Click the button below to place your order.</p>
+      <form action={action} className="mt-6">
+        <button className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">
+          Place order
+        </button>
+      </form>
+      <Link href="/cart" className="mt-4 block text-blue-600 hover:underline">&larr; Back to cart</Link>
     </div>
   );
 }
