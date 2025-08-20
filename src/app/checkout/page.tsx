@@ -1,4 +1,4 @@
-// src/app/checkout/page.tsx
+﻿// src/app/checkout/page.tsx
 import { prisma } from "@/lib/db";
 import { ensureUserId } from "@/lib/user";
 import { cookies } from "next/headers";
@@ -59,7 +59,7 @@ export default async function CheckoutPage() {
     const items = parseCookie(jar.get("cart")?.value);
     if (!items.length) redirect("/cart");
 
-    const uid = await ensureUserId(jar);
+    const uid = await ensureUserId();
 
     const products = await prisma.product.findMany({
       where: { id: { in: items.map((i) => i.id) } },
@@ -141,3 +141,4 @@ export default async function CheckoutPage() {
     </div>
   );
 }
+

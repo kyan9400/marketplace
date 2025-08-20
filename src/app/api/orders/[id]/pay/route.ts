@@ -1,45 +1,42 @@
-﻿// src/app/api/orders/[id]/pay/route.ts
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
-import { ensureUserId } from "@/lib/user";
+import { getUserIdFromCookie } from "@/lib/user";
 
-// NOTE: don't over-constrain the type of the 2nd arg; keep it as `context: any`
-export async function POST(req: Request, context: any) {
-  const id = context?.params?.id as string | undefined;
+// Next.js 15: params is a Promise — await it.
+export async function POST(
+  req: Request,
+  context: { params: Promise<{ id: string }> }
+) {
+  const { id } = await context.params;
   if (!id) {
     return NextResponse.json({ error: "Missing order id" }, { status: 400 });
   }
 
-  // In Next 15, cookies() is async
-  const jar = await cookies();
-  const uid = await ensureUserId();
+  const userId = await getUserIdFromCookie();
+  if (!userId) {
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  }
 
-  // Make sure the order belongs to the current user
+  // Ensure the order belongs to the user
   const order = await prisma.order.findFirst({
-    where: { id, userId: uid },
-    select: { id: true, paymentStatus: true },
+    where: { id, userId },
+    select: { paymentStatus: true },
   });
 
   if (!order) {
     return NextResponse.json({ error: "Order not found" }, { status: 404 });
   }
 
-  // Idempotent: if already paid, just redirect to detail
+  // If already paid, just redirect
   if (order.paymentStatus === "PAID") {
-    return NextResponse.redirect(new URL(`/orders/${id}`, req.url), 303);
+    return NextResponse.redirect(new URL(`/orders/${id}`, req.url));
   }
 
-  // Update to a valid enum value from your schema (no "CONFIRMED" in schema)
+  // Mark as paid (OrderStatus 'PAID' exists in your schema)
   await prisma.order.update({
     where: { id },
-    data: {
-      paymentStatus: "PAID",
-      status: "PROCESSING",
-      updatedAt: new Date(),
-    },
+    data: { paymentStatus: "PAID", status: "PAID" },
   });
 
-  return NextResponse.redirect(new URL(`/orders/${id}`, req.url), 303);
+  return NextResponse.redirect(new URL(`/orders/${id}`, req.url));
 }
-

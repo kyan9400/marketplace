@@ -1,23 +1,19 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { getUserIdFromCookie } from "@/lib/user";
-import { cookies } from "next/headers";
-import { StatusBadge, PaymentBadge } from "@/components/badges";
+
+function money(cents: number, currency = "USD") {
+  return (cents / 100).toLocaleString("en-US", { style: "currency", currency });
+}
 
 export default async function OrdersPage() {
-  // make dynamic for Next 15
-  const _jar = await cookies();
-  const userId = await getUserIdFromCookie(_jar);
-  
+  const userId = await getUserIdFromCookie();
 
   if (!userId) {
     return (
-      <div className="mx-auto max-w-4xl p-6">
-        <h1 className="text-2xl font-bold">Your orders</h1>
-        <p className="mt-4 text-gray-600">No user id yet  place an order first.</p>
-        <Link href="/products" className="mt-2 inline-block text-blue-600 hover:underline">
-          Browse products
-        </Link>
+      <div className="section">
+        <h1>Your Orders</h1>
+        <p className="mt-4 text-gray-700">Please sign in to view your orders.</p>
       </div>
     );
   }
@@ -29,58 +25,59 @@ export default async function OrdersPage() {
       id: true,
       totalCents: true,
       currency: true,
-      createdAt: true,
-      paymentStatus: true,
       status: true,
+      paymentStatus: true,
+      createdAt: true,
     },
   });
 
-  if (!orders.length) {
-    return (
-      <div className="mx-auto max-w-4xl p-6">
-        <h1 className="text-2xl font-bold">Your orders</h1>
-        <p className="mt-4 text-gray-600">You don&apos;t have any orders yet.</p>
-        <Link href="/products" className="mt-2 inline-block text-blue-600 hover:underline">Browse products</Link>
-      </div>
-    );
-  }
-
   return (
-    <div className="mx-auto max-w-4xl p-6">
-      <h1 className="text-2xl font-bold">Your orders</h1>
-      <ul className="mt-4 divide-y rounded-xl border bg-white">
-        {orders.map((o) => (
-          <li key={o.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="space-y-1">
-              <div className="font-medium">Order #{o.id.slice(-6)}</div>
-              <div className="flex flex-wrap items-center gap-2 text-sm">
-                <StatusBadge value={o.status as unknown as string} />
-                <PaymentBadge value={o.paymentStatus as unknown as string} />
-                <span className="text-gray-500">{o.createdAt.toLocaleString()}</span>
-              </div>
-            </div>
+    <div className="section">
+      <h1>Your Orders</h1>
 
-            <div className="flex items-center gap-3 sm:text-right">
-              <div className="text-lg font-semibold">
-                {(o.totalCents / 100).toFixed(2)} {o.currency}
-              </div>
-              {String(o.paymentStatus).toUpperCase() === "UNPAID" && (
-                <form action={`/api/orders/${o.id}/pay`} method="POST">
-                  <button
-                    type="submit"
-                    className="rounded-md bg-emerald-600 px-3 py-2 text-white hover:bg-emerald-700"
-                  >
-                    Pay now
-                  </button>
-                </form>
-              )}
-              <Link href={`/orders/${o.id}`} className="text-blue-600 hover:underline text-sm">
-                View
-              </Link>
-            </div>
-          </li>
-        ))}
-      </ul>
+      {orders.length === 0 ? (
+        <p className="mt-6 text-gray-700">You don&apos;t have any orders yet.</p>
+      ) : (
+        <div className="mt-6 overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-gray-600">
+                <th className="py-2">Order</th>
+                <th className="py-2">Placed</th>
+                <th className="py-2">Total</th>
+                <th className="py-2">Status</th>
+                <th className="py-2">Payment</th>
+                <th className="py-2"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {orders.map((o) => (
+                <tr key={o.id} className="border-t border-gray-200">
+                  <td className="py-3">
+                    <Link className="text-blue-600 hover:text-blue-700" href={`/orders/${o.id}`}>
+                      {o.id.slice(0, 8)}…
+                    </Link>
+                  </td>
+                  <td className="py-3">{new Date(o.createdAt).toLocaleString()}</td>
+                  <td className="py-3">{money(o.totalCents, o.currency || "USD")}</td>
+                  <td className="py-3">{o.status}</td>
+                  <td className="py-3">{o.paymentStatus}</td>
+                  <td className="py-3 space-x-2">
+                    {o.paymentStatus !== "PAID" && (
+                      <form action={`/api/orders/${o.id}/pay`} method="POST" className="inline">
+                        <button type="submit" className="btn-ghost text-green-700">Mark as Paid</button>
+                      </form>
+                    )}
+                    <form action={`/api/orders/${o.id}/delete`} method="POST" className="inline">
+                      <button type="submit" className="btn-ghost text-red-600">Delete</button>
+                    </form>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

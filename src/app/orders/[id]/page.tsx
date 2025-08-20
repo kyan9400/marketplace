@@ -1,89 +1,78 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { prisma } from "@/lib/db";
-import { cookies } from "next/headers";
 import { getUserIdFromCookie } from "@/lib/user";
-import { StatusBadge, PaymentBadge } from "@/components/badges";
 
-type Props = { params: Promise<{ id: string }> };
+function money(cents: number, currency = "USD") {
+  return (cents / 100).toLocaleString("en-US", { style: "currency", currency });
+}
 
-export default async function Page({ params }: Props) {
-  const _jar = await cookies();
-  const userId = await getUserIdFromCookie(_jar);
-  
+export default async function OrderPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = await params;
-
+  const userId = await getUserIdFromCookie();
   if (!userId) notFound();
 
   const order = await prisma.order.findFirst({
     where: { id, userId },
-    select: {
-      id: true, createdAt: true, status: true, paymentStatus: true,
-      currency: true, subtotalCents: true, totalCents: true
+    include: {
+      items: { include: { product: true, variant: true }, orderBy: { id: "asc" } },
+      shipping: true,
+      billing: true,
     },
   });
 
   if (!order) notFound();
 
-  const items = await prisma.orderItem.findMany({
-    where: { orderId: id },
-    select: { id: true, titleSnapshot: true, unitPriceCents: true, qty: true, totalCents: true },
-  });
-
-  const unpaid = String(order.paymentStatus).toUpperCase() === "UNPAID";
-
   return (
-    <div className="mx-auto max-w-4xl p-6">
-      <Link href="/orders" className="text-sm text-blue-600 hover:underline">&larr; Back to orders</Link>
-
-      <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Order #{order.id.slice(-6)}</h1>
-          <div className="mt-1 text-gray-600">{order.createdAt.toLocaleString()}</div>
-        </div>
-        <div className="flex items-center gap-2">
-          <StatusBadge value={order.status as unknown as string} />
-          <PaymentBadge value={order.paymentStatus as unknown as string} />
-          {unpaid && (
-            <form action={`/api/orders/${order.id}/pay`} method="POST" className="ml-2">
-              <button type="submit" className="rounded-md bg-emerald-600 px-3 py-2 text-white hover:bg-emerald-700">
-                Pay now
-              </button>
+    <div className="section">
+      <div className="flex items-center justify-between">
+        <h1>Order {order.id.slice(0, 8)}…</h1>
+        <div className="flex gap-2">
+          {order.paymentStatus !== "PAID" && (
+            <form action={`/api/orders/${order.id}/pay`} method="POST">
+              <button type="submit" className="btn-ghost text-green-700">Mark as Paid</button>
             </form>
           )}
+          <form action={`/api/orders/${order.id}/delete`} method="POST">
+            <button type="submit" className="btn-ghost text-red-600">Delete</button>
+          </form>
+          <Link href="/orders" className="btn-secondary">Back to orders</Link>
         </div>
       </div>
 
-      <ul className="mt-6 divide-y rounded-xl border bg-white">
-        {items.map((it) => (
-          <li key={it.id} className="flex items-center justify-between p-4">
-            <div>
-              <div className="font-medium">{it.titleSnapshot}</div>
-              <div className="text-sm text-gray-500">Qty: {it.qty}</div>
-            </div>
-            <div className="text-right">
-              <div className="font-semibold">
-                {(it.totalCents / 100).toFixed(2)} {order.currency}
-              </div>
-              <div className="text-xs text-gray-500">
-                {(it.unitPriceCents / 100).toFixed(2)} {order.currency} each
-              </div>
-            </div>
-          </li>
-        ))}
-      </ul>
-
-      <div className="mt-6 flex justify-end">
-        <div className="rounded-lg border p-4 w-full max-w-sm bg-white">
-          <div className="flex justify-between">
-            <span className="text-gray-600">Subtotal</span>
-            <span>{(order.subtotalCents / 100).toFixed(2)} {order.currency}</span>
+      <div className="mt-6 card p-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <div className="text-sm text-gray-600">Status</div>
+            <div className="font-medium">{order.status}</div>
           </div>
-          <div className="mt-2 border-t pt-2 flex justify-between text-lg font-semibold">
-            <span>Total</span>
-            <span>{(order.totalCents / 100).toFixed(2)} {order.currency}</span>
+          <div>
+            <div className="text-sm text-gray-600">Payment</div>
+            <div className="font-medium">{order.paymentStatus}</div>
+          </div>
+          <div>
+            <div className="text-sm text-gray-600">Total</div>
+            <div className="font-medium">{money(order.totalCents, order.currency || "USD")}</div>
           </div>
         </div>
+      </div>
+
+      <div className="mt-6 card p-4">
+        <h3 className="mb-2">Items</h3>
+        <ul className="space-y-2">
+          {order.items.map((it) => (
+            <li key={it.id} className="flex justify-between">
+              <div className="text-gray-800">
+                {it.titleSnapshot} {it.skuSnapshot ? <span className="text-gray-500">({it.skuSnapshot})</span> : null}
+              </div>
+              <div className="text-gray-700">x{it.qty}</div>
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
   );
