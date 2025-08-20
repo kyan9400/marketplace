@@ -1,46 +1,40 @@
+// src/app/api/orders/[id]/pay/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getUserIdFromCookie } from "@/lib/user";
+import { cookies } from "next/headers";
+import { getUserIdFromCookie, ensureUserId } from "@/lib/user";
 
-// POST /api/orders/[id]/pay
-type Ctx = { params: Promise<{ id: string }> };
-
-export async function POST(_req: Request, ctx: Ctx) {
-  const { id } = await ctx.params;
-  const uid = await getUserIdFromCookie();
-
-  // Always go back to the order detail
-  const toOrder = (reqUrl: string) => new URL(`/orders/${id}`, reqUrl);
-
-  if (!uid || !id) {
-    return NextResponse.redirect(new URL("/orders", _req.url), { status: 303 });
-  }
-
-  // Ensure the order belongs to this user and is currently UNPAID
-  const order = await prisma.order.findFirst({
-    where: { id, userId: uid },
-    select: { id: true, paymentStatus: true },
-  });
-
-  if (!order) {
-    return NextResponse.redirect(new URL("/orders", _req.url), { status: 303 });
-  }
-
-  if (order.paymentStatus === "PAID") {
-    // Nothing to do  already paid.
-    return NextResponse.redirect(toOrder(_req.url), { status: 303 });
-  }
-
+export async function POST(_req: Request, { params }: { params: { id: string } }) {
   try {
-    // Flip paymentStatus to PAID. Do NOT touch `status` unless you're sure of the enum value.
-    await prisma.order.update({
-      where: { id },
-      data: { paymentStatus: "PAID" },
+    const jar = await cookies(); // ✅ await it
+
+    // Make sure we have a user id (guest or real)
+    const uid = getUserIdFromCookie(jar) ?? (await ensureUserId(jar));
+
+    // Only allow paying your own order
+    const order = await prisma.order.findFirst({
+      where: { id: params.id, userId: uid },
+      select: { id: true, paymentStatus: true },
     });
+    if (!order) {
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    }
+    if (order.paymentStatus === "PAID") {
+      return NextResponse.json({ ok: true, alreadyPaid: true });
+    }
+
+    // Update statuses (matches your Prisma enums)
+    await prisma.order.update({
+      where: { id: params.id },
+      data: {
+        paymentStatus: "PAID",
+        status: "PAID", // OrderStatus has PAID in your schema
+      },
+    });
+
+    return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("pay route error", err);
-    return NextResponse.redirect(toOrder(_req.url), { status: 303 });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
-
-  return NextResponse.redirect(toOrder(_req.url), { status: 303 });
 }

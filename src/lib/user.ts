@@ -1,23 +1,37 @@
-﻿import { cookies } from "next/headers";
+﻿// src/lib/user.ts
 import { prisma } from "@/lib/db";
+import { cookies as cookiesApi } from "next/headers";
 import { randomUUID } from "crypto";
 
-export async function ensureUserId(): Promise<string> {
-  const jar = await cookies();
-  let uid = jar.get("uid")?.value;
-  if (!uid) {
-    uid = randomUUID();
-    jar.set("uid", uid, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60*60*24*365 });
-  }
+// In Next 15, cookies() returns a Promise<ReadonlyRequestCookies>
+export type CookieStore = Awaited<ReturnType<typeof cookiesApi>>;
+
+export function getUserIdFromCookie(jar: CookieStore) {
+  return jar.get("uid")?.value ?? null;
+}
+
+export async function ensureUserId(jar: CookieStore) {
+  let uid = getUserIdFromCookie(jar);
+  if (!uid) uid = `guest_${randomUUID()}`;
+
   await prisma.user.upsert({
     where: { id: uid },
     update: {},
-    create: { id: uid, email: `guest-${uid}@example.invalid`, name: "Guest" },
+    create: {
+      id: uid,
+      email: `${uid}@guest.local`,
+      name: "Guest",
+      role: "BUYER",
+    },
   });
-  return uid;
-}
 
-export async function getUserIdFromCookie(): Promise<string | undefined> {
-  const jar = await cookies();
-  return jar.get("uid")?.value;
+  // Only call set() in server actions/route handlers
+  jar.set("uid", uid, {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+  });
+
+  return uid;
 }
