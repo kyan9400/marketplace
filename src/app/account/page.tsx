@@ -1,6 +1,7 @@
-﻿import { requireUserId, getSession, signOut } from "@/lib/user";
+import { requireUserId, getSession, signOut } from "@/lib/user";
 import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 
 export const metadata = { title: "Account • MyShop" };
 
@@ -73,18 +74,18 @@ export default async function AccountPage() {
           <div className="mt-8">
             <h2 className="text-lg font-medium">Quick links</h2>
             <div className="mt-3 flex flex-wrap gap-3">
-              <a
+              <Link
                 href="/orders"
                 className="inline-flex items-center rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
               >
                 View orders
-              </a>
-              <a
+              </Link>
+              <Link
                 href="/products"
                 className="inline-flex items-center rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium hover:bg-gray-50"
               >
                 Continue shopping
-              </a>
+              </Link>
             </div>
           </div>
         </div>

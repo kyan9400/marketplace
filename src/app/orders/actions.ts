@@ -1,7 +1,6 @@
-﻿"use server";
+"use server";
 
 import { prisma } from "@/lib/db";
-import { cookies } from "next/headers";
 import { getUserIdFromCookie } from "@/lib/user";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -14,8 +13,7 @@ export async function deleteOrderAction(formData: FormData) {
     throw new Error("Missing orderId");
   }
 
-  const jar = await cookies();
-  const userId = await getUserIdFromCookie(jar);
+  const userId = await getUserIdFromCookie();
   if (!userId) {
     throw new Error("Not authenticated");
   }
