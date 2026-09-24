@@ -1,4 +1,4 @@
-﻿import { redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import { signIn, getSession } from "@/lib/user";
 
@@ -21,7 +21,7 @@ export default async function SignUpPage() {
       <div className="container mx-auto max-w-lg px-4 py-20">
         <div className="rounded-2xl border border-gray-200 bg-white/80 backdrop-blur shadow-md p-8">
           <h1 className="text-2xl font-semibold tracking-tight">Create your account</h1>
-          <p className="mt-1 text-sm text-gray-600">Its fastjust your email and a name.</p>
+          <p className="mt-1 text-sm text-gray-600">It&apos;s fast&mdash;just your email and a name.</p>
 
           <form action={action} className="mt-8 space-y-4">
             <div>

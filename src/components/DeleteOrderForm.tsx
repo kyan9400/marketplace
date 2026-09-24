@@ -1,4 +1,4 @@
-﻿import { deleteOrderAction } from "@/app/orders/actions";
+import { deleteOrderAction } from "@/app/orders/actions";
 
 export default function DeleteOrderForm(props: { orderId: string; redirectTo?: string }) {
   const { orderId, redirectTo } = props;

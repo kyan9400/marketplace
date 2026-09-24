@@ -1,4 +1,4 @@
-﻿import { redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import { signIn, getSession } from "@/lib/user";
 
@@ -22,7 +22,7 @@ export default async function SignInPage() {
         <div className="rounded-2xl border border-gray-200 bg-white/80 backdrop-blur shadow-md p-8">
           <h1 className="text-2xl font-semibold tracking-tight">Welcome back</h1>
           <p className="mt-1 text-sm text-gray-600">
-            Sign in with your email. Well create your account if it doesnt exist.
+            Sign in with your email. We&apos;ll create your account if it doesn&apos;t exist.
           </p>
 
           <form action={action} className="mt-8 space-y-4">

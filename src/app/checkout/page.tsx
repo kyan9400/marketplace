@@ -1,4 +1,4 @@
-﻿// src/app/checkout/page.tsx
+// src/app/checkout/page.tsx
 import { prisma } from "@/lib/db";
 import { ensureUserId } from "@/lib/user";
 import { cookies } from "next/headers";
